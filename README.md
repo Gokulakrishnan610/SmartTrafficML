@@ -1,146 +1,334 @@
-# IOT - Smart Traffic Management System
+# 🚦 Smart Traffic Signal Optimizer
 
-A comprehensive traffic management solution that uses computer vision, machine learning, and IoT to optimize traffic flow at intersections. The system detects vehicles, identifies ambulances, and dynamically adjusts traffic signal timings based on real-time traffic conditions.
+A comprehensive traffic management system that uses **Computer Vision**, **Machine Learning**, and a **Web Dashboard** to optimize traffic flow at intersections. The system detects vehicles, identifies ambulances, and dynamically adjusts traffic signal timings based on real-time traffic conditions.
 
-## Overview
+## ✨ Features
 
-This project integrates several components to create an intelligent traffic signal control system:
+- 🎥 **Real-time Vehicle Detection** - YOLOv8-based computer vision for accurate vehicle counting
+- 🤖 **ML-Powered Optimization** - TensorFlow models predict optimal signal timings
+- 🚑 **Emergency Vehicle Priority** - Automatic ambulance detection with priority override
+- 🌐 **Web Dashboard** - Real-time monitoring and control interface
+- 🔄 **Hybrid Mode** - Combine computer vision with manual input
+- 📊 **Live Updates** - WebSocket-based real-time state synchronization
+- 🎯 **Graceful Degradation** - System continues working even if components fail
 
-1. **Computer Vision System**: Uses YOLOv8 to detect and count vehicles in real-time from traffic cameras
-2. **Machine Learning Model**: Predicts optimal traffic signal timings based on traffic density and patterns
-3. **ESP32 Controller**: Hardware controller that manages the physical traffic signals
-4. **Emergency Vehicle Priority**: Automatically detects ambulances and gives them priority
+## 🏗️ Architecture
 
-## Components
+```
+┌─────────────────┐
+│   Dashboard     │ ← User Interface (HTML/JS)
+│ (Web Browser)   │
+└────────┬────────┘
+         │ HTTP/WebSocket
+         ↓
+┌─────────────────┐
+│    main.py      │ ← FastAPI Backend (API Layer)
+│  (FastAPI)      │
+└────────┬────────┘
+         │ Delegates to
+         ↓
+┌─────────────────┐
+│traffic_controller│ ← Business Logic (Central Coordination)
+│      .py        │   • ML Prediction
+└────────┬────────┘   • File Reading
+         ↑            • Signal Timing
+         │
+    ┌────┴────┐
+    │         │
+    ↓         ↓
+┌─────┐  ┌──────────────┐
+│ ML  │  │vehicle_count │ ← CV Output
+│Models│  │  _south.txt  │
+└─────┘  └──────┬───────┘
+                ↑
+         ┌──────┴───────┐
+         │vehicle_      │ ← YOLO Detection
+         │detection.py  │
+         └──────────────┘
+```
 
-### 1. Vehicle Detection (`vehicle_detection.py`)
+## 📦 Components
 
-This module uses YOLOv8 to detect and count vehicles from camera feeds:
+### 1. **traffic_dashboard.html** - Web Interface
+- Real-time traffic visualization with animated intersection
+- Manual control sliders for all four directions
+- Computer vision mode activation
+- Image upload for YOLO detection
+- Live countdown timer and phase indicator
+- WebSocket-based real-time updates
 
-- Counts vehicles by type (car, motorcycle, bus, truck, bicycle)
-- Detects ambulances and triggers emergency protocols
-- Provides visual monitoring with bounding boxes around detected vehicles
-- Outputs vehicle counts to a text file for the controller to use
+### 2. **main.py** - FastAPI Backend
+- RESTful API endpoints for dashboard
+- WebSocket server for real-time updates
+- Coordinates between dashboard and traffic controller
+- Manages background tasks (simulation, CV polling)
+- Handles image upload and YOLO detection
 
-### 2. Traffic Controller (`traffic_controller.py`)
+### 3. **traffic_controller.py** - Central Coordination Layer
+- Reads vehicle count data from file
+- Manages ML model initialization
+- Predicts signal timings (ML or formula fallback)
+- Handles ambulance override logic
+- Provides clean API for main.py
 
-The central intelligence of the system:
+### 4. **vehicle_detection.py** - Computer Vision
+- YOLOv8-based vehicle detection
+- Counts vehicles by type (car, motorcycle, bus, truck)
+- Detects ambulances for emergency override
+- Writes counts to `vehicle_count_south.txt`
+- Displays annotated video feed
 
-- Reads vehicle counts from all directions
-- Uses pre-trained machine learning models to predict optimal signal timings
-- Implements emergency vehicle override protocol
-- Sends timing commands to the ESP32 hardware controller
+### 5. **trainthemodel.py** - ML Model Training
+- Trains TensorFlow models for each direction
+- Uses time of day, day of week, and vehicle counts
+- Outputs trained models (.h5 files)
+- Includes StandardScaler for feature normalization
 
-### 3. Model Training (`trainthemodel.py`)
-
-Creates and trains the machine learning models that determine optimal signal timings:
-
-- Trains separate models for each direction (north, south, east, west)
-- Uses features like time of day, day of week, and vehicle counts
-- Outputs trained models in .h5 format
-
-### 4. Dataset Creation (`datasetcreate.py`)
-
-Generates synthetic training data for the ML models:
-
-- Creates random vehicle count scenarios
-- Generates corresponding signal timing data
+### 6. **datasetcreate.py** - Dataset Generation
+- Generates synthetic training data
+- Creates realistic traffic scenarios
 - Saves dataset to CSV for model training
 
-### 5. ESP32 Controller (ESP32 Code)
-
-Hardware controller that interfaces with physical traffic signals:
-
-- Controls traffic lights for all four directions
-- Receives timing updates over WiFi
-- Implements timing sequences for each direction
-
-## Setup Instructions
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Python 3.8+
-- TensorFlow 2.x
-- OpenCV
-- Ultralytics YOLOv8
-- ESP32 with Arduino IDE
+- Python 3.8 or higher
+- Webcam or IP camera (for CV mode)
+- Modern web browser
 
 ### Installation
 
-1. Clone this repository:
-   ```
-   git clone https://github.com/yourusername/smart-traffic-management.git
-   cd smart-traffic-management
-   ```
-
-2. Install Python dependencies:
-   ```
-   pip install ultralytics opencv-python tensorflow scikit-learn pandas numpy requests
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/yourusername/smart-traffic-optimizer.git
+   cd smart-traffic-optimizer
    ```
 
-3. Download the YOLOv8 model:
+2. **Create virtual environment:**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
-   wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n.pt
+
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
    ```
 
-4. Flash the ESP32 code using Arduino IDE:
-   - Install ESP32 board support in Arduino IDE
-   - Install required libraries: AsyncTCP, ESPAsyncWebServer, ArduinoJson
-   - Update WiFi credentials in the code
-   - Upload to your ESP32
+4. **Download YOLOv8 model** (if not included):
+   ```bash
+   # The yolov8n.pt file should be in the project root
+   # If missing, it will be downloaded automatically on first run
+   ```
 
-### Hardware Setup
+### Training the Models
 
-Connect the ESP32 pins to traffic light LEDs as specified in the code:
+1. **Generate training dataset:**
+   ```bash
+   python datasetcreate.py
+   ```
+   This creates `traffic_signal_data_directions.csv`
 
-- North: Green (14), Yellow (27), Red (26)
-- South: Green (25), Yellow (33), Red (32)
-- East: Green (18), Yellow (19), Red (21)
-- West: Green (22), Yellow (23), Red (4)
+2. **Train ML models:**
+   ```bash
+   python trainthemodel.py
+   ```
+   This creates four model files:
+   - `traffic_signal_model_north.h5`
+   - `traffic_signal_model_south.h5`
+   - `traffic_signal_model_east.h5`
+   - `traffic_signal_model_west.h5`
 
 ### Running the System
 
-1. First create the dataset and train the models:
-   ```
-   python datasetcreate.py
-   python trainthemodel.py
+1. **Start the FastAPI server:**
+   ```bash
+   uvicorn main:app --reload --port 8000
    ```
 
-2. Start the vehicle detection system:
+2. **Open the dashboard:**
    ```
+   http://localhost:8000
+   ```
+
+3. **(Optional) Start vehicle detection for CV mode:**
+   ```bash
    python vehicle_detection.py
    ```
+   Or click "Auto CV" in the dashboard to launch it automatically.
 
-3. Start the traffic controller (in a separate terminal):
-   ```
-   python traffic_controller.py
-   ```
+## 🎮 Usage
 
-## Configuration
+### Manual Mode
 
-- Update the camera URL in `vehicle_detection.py` to point to your traffic cameras
-- Adjust the ESP32_SERVER_URL in `traffic_controller.py` to match your ESP32's IP address
-- Modify confidence thresholds in `vehicle_detection.py` for object detection sensitivity
+1. Adjust the sliders for each direction (North, South, East, West)
+2. Click **"▶ Optimize (Manual)"** to calculate timings
+3. Watch the simulation run with optimized signal timings
 
-## Future Improvements
+### Computer Vision Mode (Hybrid)
 
-- Add pedestrian detection and crosswalk timing
-- Implement historical data analysis for predictive traffic management
-- Develop a web dashboard for monitoring traffic flow
-- Support multiple intersections with coordination
-- Add more sophisticated emergency vehicle detection
+1. Click **"Auto CV"** to start vehicle detection
+2. South direction count comes from camera feed
+3. Adjust North, East, West sliders manually
+4. System combines CV and manual input for optimization
 
-## License
+### Image Upload Mode
+
+1. Click **"Upload Image"** and select a traffic image
+2. YOLO detects vehicles in the image
+3. System updates the selected direction's count
+4. Timings are recalculated automatically
+
+### Ambulance Detection
+
+- When an ambulance is detected (via CV or image upload):
+  - 🚨 Emergency override activates
+  - South direction gets 120s green time
+  - Other directions get 0s green time
+  - Red ambulance badge appears in dashboard
+
+## 📡 API Endpoints
+
+### GET `/`
+Returns the dashboard HTML interface
+
+### GET `/api/info`
+Returns system information (ML status, YOLO status)
+
+### GET `/api/state`
+Returns current system state (vehicle counts, timings, mode)
+
+### POST `/api/update`
+Manual mode optimization with vehicle counts
+
+### POST `/api/set_counts`
+Update vehicle counts without starting simulation
+
+### POST `/api/cv/start`
+Start computer vision mode (hybrid input)
+
+### POST `/api/detect/upload`
+Upload image for YOLO detection
+
+### POST `/api/reset`
+Reset system to idle state
+
+### WebSocket `/ws`
+Real-time state updates and countdown timer
+
+## ⚙️ Configuration
+
+### Camera Configuration
+Edit `vehicle_detection.py`:
+```python
+# For webcam
+cap = cv2.VideoCapture(0)
+
+# For IP camera (ESP32-CAM)
+cap = cv2.VideoCapture("http://192.168.1.100:81/stream")
+```
+
+### ML Model Settings
+Edit `traffic_controller.py`:
+```python
+# Green time constraints (seconds)
+MIN_GREEN = 10
+MAX_GREEN = 90
+
+# Ambulance override time
+AMBULANCE_GREEN = 120
+```
+
+### Server Configuration
+```bash
+# Change port
+uvicorn main:app --port 8080
+
+# Enable auto-reload for development
+uvicorn main:app --reload
+
+# Production mode
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+## 🧪 Testing
+
+The system includes graceful degradation:
+
+- **ML models missing?** → Uses formula-based fallback
+- **YOLO unavailable?** → Image upload disabled, CV mode still works
+- **Camera disconnected?** → Manual mode continues working
+- **WebSocket drops?** → Auto-reconnects every 3 seconds
+
+## 📊 System Requirements
+
+- **CPU**: Multi-core processor (for YOLO inference)
+- **RAM**: 4GB minimum, 8GB recommended
+- **Storage**: 500MB for models and dependencies
+- **Camera**: 720p or higher for best detection accuracy
+- **Browser**: Chrome, Firefox, Safari, or Edge (latest versions)
+
+## 🔧 Troubleshooting
+
+### ML models not loading
+```bash
+# Retrain the models
+python trainthemodel.py
+```
+
+### YOLO detection not working
+```bash
+# Check if yolov8n.pt exists
+ls -la yolov8n.pt
+
+# Reinstall ultralytics
+pip install --upgrade ultralytics
+```
+
+### WebSocket connection fails
+- Check if port 8000 is available
+- Ensure firewall allows WebSocket connections
+- Try a different browser
+
+### Camera not detected
+```bash
+# List available cameras (Linux)
+ls /dev/video*
+
+# Test camera with OpenCV
+python -c "import cv2; print(cv2.VideoCapture(0).read())"
+```
+
+## 🛣️ Roadmap
+
+- [ ] Multi-intersection coordination
+- [ ] Historical data analysis and reporting
+- [ ] Pedestrian detection and crosswalk timing
+- [ ] Weather-based timing adjustments
+- [ ] Mobile app for remote monitoring
+- [ ] Cloud deployment support
+- [ ] Advanced ML models (reinforcement learning)
+
+## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Contributors
+## 👥 Contributors
 
 - [Gokulakrishnan K](https://github.com/Gokulakrishnan610)
 
-  
-## Acknowledgments
+## 🙏 Acknowledgments
 
-- YOLOv8 by Ultralytics
-- TensorFlow and Keras teams
-- ESP32 and Arduino communities
+- [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics) - Object detection
+- [FastAPI](https://fastapi.tiangolo.com/) - Web framework
+- [TensorFlow](https://www.tensorflow.org/) - Machine learning
+- [OpenCV](https://opencv.org/) - Computer vision
+
+## 📞 Support
+
+For issues, questions, or contributions, please open an issue on GitHub.
+
+---
+
+**Made with ❤️ for smarter cities**
