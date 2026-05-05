@@ -137,8 +137,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Contributors
 
 - [Gokulakrishnan K](https://github.com/Gokulakrishnan610)
-- [Jayaprakash A](https://github.com/A-Jayaprakash)
-- [GokulaSarathy S](https://github.com/Gokulasarathy)
+
   
 ## Acknowledgments
 

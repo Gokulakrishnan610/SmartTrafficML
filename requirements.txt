@@ -1,0 +1,23 @@
+# Web Framework
+fastapi
+uvicorn[standard]
+python-multipart
+websockets
+
+# Data Processing
+pandas
+numpy
+
+# Machine Learning
+tensorflow
+scikit-learn
+
+# Computer Vision
+opencv-python
+ultralytics
+
+# HTTP Requests
+requests
+
+# Data Validation
+pydantic

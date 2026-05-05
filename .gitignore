@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+*.log
+
+# Test files
+test_*.py
+test_*.md
+*_report.md
+*_summary.md
+
+# Documentation (optional - uncomment if needed)
+# *.docx
+# *.pptx
+# *.pdf
+
+# Media files (optional - uncomment if needed)
+# *.mp4
+# *.avi
+# *.mov
+
+# Kiro
+.kiro/

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Smart Traffic Signal Optimizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0e1a;--card:#111827;--card2:#1a2236;--border:rgba(255,255,255,0.07);--accent:#6366f1;--cyan:#22d3ee;--green:#22c55e;--yellow:#eab308;--red:#ef4444;--text:#f1f5f9;--muted:#64748b}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{background:linear-gradient(135deg,#1e1b4b,#0f172a);border-bottom:1px solid var(--border);padding:16px 36px;display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:1.3rem;font-weight:800;background:linear-gradient(90deg,var(--accent),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.badge{padding:4px 12px;border-radius:999px;font-size:.72rem;font-weight:700;border:1px solid}
+.badge-live{background:rgba(34,197,94,.12);color:var(--green);border-color:rgba(34,197,94,.3)}
+.badge-off{background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.3)}
+.ws-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--red);transition:.3s}
+.ws-dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+
+main{display:grid;grid-template-columns:300px 1fr;gap:20px;padding:20px 36px;max-width:1400px;margin:0 auto}
+
+.card{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:18px}
+.card-title{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:14px;font-weight:600}
+
+.sidebar{display:flex;flex-direction:column;gap:14px}
+
+.dir-row{margin-bottom:12px}
+.dir-label{display:flex;align-items:center;gap:7px;font-size:.82rem;font-weight:600;margin-bottom:6px}
+.dot{width:8px;height:8px;border-radius:50%}
+.dn{background:#818cf8}.ds{background:#f472b6}.de{background:#34d399}.dw{background:#fb923c}
+.sl-wrap{display:flex;align-items:center;gap:10px}
+input[type=range]{flex:1;-webkit-appearance:none;height:4px;background:rgba(255,255,255,.1);border-radius:999px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 8px rgba(99,102,241,.5)}
+.sl-val{font-size:.82rem;font-weight:700;color:var(--cyan);width:30px;text-align:right}
+
+.amb-row{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.toggle{position:relative;width:40px;height:22px}
+.toggle input{opacity:0;width:0;height:0}
+.tog{position:absolute;inset:0;background:rgba(255,255,255,.1);border-radius:999px;cursor:pointer;transition:.3s}
+.tog::before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.3s}
+.toggle input:checked+.tog{background:var(--red)}
+.toggle input:checked+.tog::before{transform:translateX(18px)}
+
+.btn{width:100%;padding:11px;border:none;border-radius:11px;font-family:'Inter',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-go{background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff;margin-top:14px}
+.btn-go:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(99,102,241,.4)}
+.btn-go:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-rst{background:rgba(255,255,255,.06);color:var(--muted);margin-top:8px}
+.btn-rst:hover{background:rgba(255,255,255,.1);color:var(--text)}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.stat{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.stat .sd{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.stat .sv{font-size:1.5rem;font-weight:800;line-height:1}
+.stat .sl{font-size:.68rem;color:var(--muted);margin-top:2px}
+.sn .sd,.sn .sv{color:#818cf8}.ss .sd,.ss .sv{color:#f472b6}.se .sd,.se .sv{color:#34d399}.sw .sd,.sw .sv{color:#fb923c}
+
+/* Bottom grid */
+.btm{display:grid;grid-template-columns:1fr 190px;gap:16px;align-items:start}
+
+/* Intersection */
+.ix-wrap{position:relative;width:380px;height:380px;margin:8px auto 0}
+.road-v{position:absolute;left:50%;top:0;transform:translateX(-50%);width:110px;height:100%;background:#1e293b;border-left:2px solid #334155;border-right:2px solid #334155}
+.road-h{position:absolute;top:50%;left:0;transform:translateY(-50%);width:100%;height:110px;background:#1e293b;border-top:2px solid #334155;border-bottom:2px solid #334155}
+.cx{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:110px;height:110px;background:#243044;border:1.5px solid #334155}
+.dtag{position:absolute;font-size:.6rem;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.35)}
+.dtag.n{top:5px;left:50%;transform:translateX(-50%)}.dtag.s{bottom:5px;left:50%;transform:translateX(-50%)}
+.dtag.e{right:5px;top:50%;transform:translateY(-50%) rotate(90deg)}.dtag.w{left:5px;top:50%;transform:translateY(-50%) rotate(-90deg)}
+
+.tl{position:absolute;width:42px;background:#0f172a;border-radius:10px;padding:5px;display:flex;flex-direction:column;gap:5px;align-items:center;border:1px solid #2d3748;z-index:10;box-shadow:0 4px 20px rgba(0,0,0,.6)}
+.tl-n{top:6px;left:calc(50% - 58px);transform:translateX(-50%)}
+.tl-s{bottom:6px;left:calc(50% + 58px);transform:translateX(-50%)}
+.tl-e{right:6px;top:calc(50% + 58px);transform:translateY(-50%)}
+.tl-w{left:6px;top:calc(50% - 58px);transform:translateY(-50%)}
+.bulb{width:27px;height:27px;border-radius:50%;background:#0f172a;border:1px solid #1e293b;transition:all .4s}
+.bulb.r{background:var(--red);box-shadow:0 0 14px var(--red),0 0 28px rgba(239,68,68,.35)}
+.bulb.y{background:var(--yellow);box-shadow:0 0 14px var(--yellow),0 0 28px rgba(234,179,8,.35)}
+.bulb.g{background:var(--green);box-shadow:0 0 14px var(--green),0 0 28px rgba(34,197,94,.35)}
+
+.mode-pill{display:inline-block;padding:4px 12px;border-radius:999px;font-size:.7rem;font-weight:700;background:rgba(34,211,238,.1);color:var(--cyan);border:1px solid rgba(34,211,238,.2);margin-bottom:10px}
+.emg{display:none;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);border-radius:10px;padding:10px 14px;text-align:center;font-size:.8rem;font-weight:700;color:#f87171;margin-bottom:10px;animation:pb 1s infinite alternate}
+.emg.show{display:block}
+@keyframes pb{from{border-color:rgba(239,68,68,.2)}to{border-color:rgba(239,68,68,.8)}}
+
+/* Timer ring */
+.ring-wrap{display:flex;flex-direction:column;align-items:center;gap:14px}
+.ring-box{position:relative;display:flex;align-items:center;justify-content:center}
+.ring-box svg{transform:rotate(-90deg)}
+.rbg{fill:none;stroke:rgba(255,255,255,.06);stroke-width:6}
+.rprog{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 1s linear,stroke .4s}
+.rcenter{position:absolute;text-align:center}
+.rcount{font-size:2rem;font-weight:800;line-height:1}
+.rphase{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-top:2px}
+.rdir{font-size:.72rem;font-weight:600;margin-top:4px}
+
+/* Log */
+.log-box{max-height:130px;overflow-y:auto;display:flex;flex-direction:column;gap:5px}
+.log-box::-webkit-scrollbar{width:3px}
+.log-box::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.log-entry{font-size:.72rem;display:flex;gap:7px}
+.lt{color:var(--cyan);font-weight:600;flex-shrink:0}
+.lm{color:var(--text)}
+
+/* CV Section */
+.cv-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.cv-preview { width: 100%; height: 160px; background: #000; border-radius: 8px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+.cv-preview img { width: 100%; height: 100%; object-fit: contain; }
+.cv-preview .placeholder { color: var(--muted); font-size: .8rem; }
+.btn-cv { background: rgba(34,211,238,.1); color: var(--cyan); border: 1px solid rgba(34,211,238,.3); }
+.btn-cv:hover { background: rgba(34,211,238,.2); }
+.upload-btn-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
+.upload-btn-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; }
+.ml-badge { font-size: .65rem; padding: 2px 6px; border-radius: 4px; background: rgba(139,92,246,.2); color: #c4b5fd; border: 1px solid rgba(139,92,246,.4); margin-left: 8px; vertical-align: middle; display: none; }
+.ml-badge.show { display: inline-block; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🚦 Smart Traffic Signal Optimizer</h1>
+  <span class="badge badge-off" id="ws-badge"><span class="ws-dot" id="ws-dot"></span>Connecting…</span>
+</header>
+
+<main>
+  <div class="sidebar">
+    <div class="card">
+      <div class="card-title">Input Controls <span class="ml-badge" id="ml-badge">ML Active</span></div>
+      
+      <div id="manual-controls">
+          <div class="dir-row"><div class="dir-label"><span class="dot dn"></span>North</div>
+            <div class="sl-wrap"><input type="range" id="sl-n" min="0" max="99" value="30" oninput="document.getElementById('vn').textContent=this.value; updateCounts()"><span class="sl-val" id="vn">30</span></div></div>
+          <div class="dir-row"><div class="dir-label"><span class="dot ds"></span>South</div>
+            <div class="sl-wrap"><input type="range" id="sl-s" min="0" max="99" value="50" oninput="document.getElementById('vs').textContent=this.value; updateCounts()"><span class="sl-val" id="vs">50</span></div></div>
+          <div class="dir-row"><div class="dir-label"><span class="dot de"></span>East</div>
+            <div class="sl-wrap"><input type="range" id="sl-e" min="0" max="99" value="20" oninput="document.getElementById('ve').textContent=this.value; updateCounts()"><span class="sl-val" id="ve">20</span></div></div>
+          <div class="dir-row"><div class="dir-label"><span class="dot dw"></span>West</div>
+            <div class="sl-wrap"><input type="range" id="sl-w" min="0" max="99" value="70" oninput="document.getElementById('vw').textContent=this.value; updateCounts()"><span class="sl-val" id="vw">70</span></div></div>
+          <div class="amb-row">
+            <span style="font-size:.8rem;color:var(--muted)">🚨 Ambulance (South)</span>
+            <label class="toggle"><input type="checkbox" id="amb-chk"><span class="tog"></span></label>
+          </div>
+          <button type="button" class="btn btn-go" id="btn-go" onclick="sendUpdate()">▶ Optimize (Manual)</button>
+      </div>
+
+      <div class="cv-section">
+          <div class="card-title" style="margin-bottom:8px">Computer Vision (South)</div>
+          <div class="cv-preview" id="cv-preview">
+              <span class="placeholder">No Image</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+              <div class="upload-btn-wrapper">
+                  <button type="button" class="btn btn-cv">Upload Image</button>
+                  <input type="file" id="cv-upload" accept="image/*" onchange="uploadImage(this)" />
+              </div>
+              <button type="button" class="btn btn-cv" onclick="startCV()">Auto CV</button>
+          </div>
+      </div>
+
+      <button type="button" class="btn btn-rst" onclick="sendReset()">↺ Reset All</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Event Log</div>
+      <div class="log-box" id="log-box">
+        <div class="log-entry"><span class="lt">--:--</span><span class="lm">Connecting to server…</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="stats-grid">
+      <div class="stat sn"><div class="sd">North</div><div class="sv" id="stn">--</div><div class="sl">Green (s)</div></div>
+      <div class="stat ss"><div class="sd">South</div><div class="sv" id="sts">--</div><div class="sl">Green (s)</div></div>
+      <div class="stat se"><div class="sd">East</div><div class="sv" id="ste">--</div><div class="sl">Green (s)</div></div>
+      <div class="stat sw"><div class="sd">West</div><div class="sv" id="stw">--</div><div class="sl">Green (s)</div></div>
+    </div>
+
+    <div class="btm">
+      <div class="card">
+        <div class="mode-pill" id="mode-pill">⏸ Idle</div>
+        <div class="emg" id="emg">🚨 AMBULANCE — SOUTH PRIORITY OVERRIDE ACTIVE</div>
+        <div class="ix-wrap">
+          <div class="road-v"></div><div class="road-h"></div><div class="cx"></div>
+          <span class="dtag n">NORTH</span><span class="dtag s">SOUTH</span>
+          <span class="dtag e">EAST</span><span class="dtag w">WEST</span>
+          <div class="tl tl-n"><div class="bulb r" id="n-r"></div><div class="bulb" id="n-y"></div><div class="bulb" id="n-g"></div></div>
+          <div class="tl tl-s"><div class="bulb r" id="s-r"></div><div class="bulb" id="s-y"></div><div class="bulb" id="s-g"></div></div>
+          <div class="tl tl-e"><div class="bulb r" id="e-r"></div><div class="bulb" id="e-y"></div><div class="bulb" id="e-g"></div></div>
+          <div class="tl tl-w"><div class="bulb r" id="w-r"></div><div class="bulb" id="w-y"></div><div class="bulb" id="w-g"></div></div>
+        </div>
+      </div>
+
+      <div class="card ring-wrap">
+        <div class="card-title" style="text-align:center">Current Phase</div>
+        <div class="ring-box">
+          <svg width="150" height="150" viewBox="0 0 150 150">
+            <circle class="rbg" cx="75" cy="75" r="63"/>
+            <circle class="rprog" id="ring" cx="75" cy="75" r="63" stroke="#22c55e" stroke-dasharray="395.8" stroke-dashoffset="0"/>
+          </svg>
+          <div class="rcenter">
+            <div class="rcount" id="rc">--</div>
+            <div class="rphase" id="rp">IDLE</div>
+            <div class="rdir" id="rd" style="color:#818cf8">—</div>
+          </div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:.72rem;color:var(--muted)">Active Direction</div>
+          <div style="font-size:1rem;font-weight:700;margin-top:4px" id="active-dir">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const CIRC = 2 * Math.PI * 63;
+const DIR_COLORS = {north:'#818cf8',south:'#f472b6',east:'#34d399',west:'#fb923c'};
+const DIR_ICONS  = {north:'⬆ NORTH',south:'⬇ SOUTH',east:'➡ EAST',west:'⬅ WEST'};
+const API = `http://${location.hostname}:8000`;
+const WS_URL = `ws://${location.hostname}:8000/ws`;
+
+let ws, reconnectTimer;
+
+function log(msg) {
+  const box = document.getElementById('log-box');
+  const t = new Date().toTimeString().slice(0,8);
+  const el = document.createElement('div');
+  el.className = 'log-entry';
+  el.innerHTML = `<span class="lt">${t}</span><span class="lm">${msg}</span>`;
+  box.prepend(el);
+  while (box.children.length > 25) box.removeChild(box.lastChild);
+}
+
+function setWS(online) {
+  const badge = document.getElementById('ws-badge');
+  badge.className = 'badge ' + (online ? 'badge-live' : 'badge-off');
+  badge.innerHTML = `<span class="ws-dot ${online?'on':''}"></span>${online?'Live':'Offline'}`;
+}
+
+function setLight(dir, state) {
+  const p = dir[0];
+  document.getElementById(`${p}-r`).className = 'bulb' + (state==='red'?' r':'');
+  document.getElementById(`${p}-y`).className = 'bulb' + (state==='yellow'?' y':'');
+  document.getElementById(`${p}-g`).className = 'bulb' + (state==='green'?' g':'');
+}
+
+function allRed() {
+  ['north','south','east','west'].forEach(d => setLight(d,'red'));
+}
+
+function applyState(s) {
+  if (!s) return;
+
+  ['north','south','east','west'].forEach((d,i) => {
+    const el = document.getElementById(['stn','sts','ste','stw'][i]);
+    if (s.timings && s.timings[d]) el.textContent = s.timings[d].green;
+  });
+
+  const pill = document.getElementById('mode-pill');
+  const emg = document.getElementById('emg');
+  if (s.mode === 'idle') { pill.textContent = '⏸ Idle'; emg.classList.remove('show'); }
+  else if (s.mode === 'ambulance') { pill.textContent = '🚨 Ambulance Override'; emg.classList.add('show'); }
+  else { pill.textContent = `▶ Running (${s.input_source.toUpperCase()})`; emg.classList.remove('show'); }
+
+  if (s.mode === 'idle') {
+    allRed();
+  } else {
+    ['north','south','east','west'].forEach(d => setLight(d, d === s.active_direction ? s.active_phase : 'red'));
+  }
+
+  const mlBadge = document.getElementById('ml-badge');
+  if (s.ml_used) mlBadge.classList.add('show'); else mlBadge.classList.remove('show');
+
+  const timeLeft = s.time_remaining || 0;
+  const phase = s.active_phase || 'idle';
+  const dir = s.active_direction || 'north';
+  const total = s.timings && s.timings[dir] ? (phase === 'green' ? s.timings[dir].green : s.timings[dir].yellow) : 30;
+  
+  const ring = document.getElementById('ring');
+  ring.style.strokeDashoffset = CIRC * (1 - (total>0?timeLeft/total:0));
+  ring.style.stroke = phase === 'green' ? '#22c55e' : phase === 'yellow' ? '#eab308' : '#ef4444';
+  document.getElementById('rc').textContent = timeLeft || '--';
+  document.getElementById('rp').textContent = phase.toUpperCase();
+  document.getElementById('rd').textContent = DIR_ICONS[dir] || '—';
+  document.getElementById('rd').style.color = DIR_COLORS[dir] || '#fff';
+  document.getElementById('active-dir').textContent = DIR_ICONS[dir] || '—';
+  document.getElementById('active-dir').style.color = DIR_COLORS[dir] || '#fff';
+
+  // Update sliders based on event to prevent fighting with user input
+  if(s.vehicle_counts && s.event !== 'tick') {
+      if (s.event === 'init' || s.event === 'reset' || s.input_source === 'manual') {
+          document.getElementById('sl-n').value = s.vehicle_counts.north; document.getElementById('vn').textContent = s.vehicle_counts.north;
+          document.getElementById('sl-s').value = s.vehicle_counts.south; document.getElementById('vs').textContent = s.vehicle_counts.south;
+          document.getElementById('sl-e').value = s.vehicle_counts.east; document.getElementById('ve').textContent = s.vehicle_counts.east;
+          document.getElementById('sl-w').value = s.vehicle_counts.west; document.getElementById('vw').textContent = s.vehicle_counts.west;
+      } else if (s.input_source === 'cv') {
+          document.getElementById('sl-s').value = s.vehicle_counts.south; document.getElementById('vs').textContent = s.vehicle_counts.south;
+      }
+  }
+}
+
+function connectWS() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => { setWS(true); log('✅ Connected to server'); };
+  ws.onmessage = e => {
+    const data = JSON.parse(e.data);
+    applyState(data);
+    if (data.event === 'update' || data.event === 'upload_detect' || data.event === 'cv_update') 
+        log(`📊 Timings: N:${data.timings.north.green}s S:${data.timings.south.green}s E:${data.timings.east.green}s W:${data.timings.west.green}s`);
+    if (data.event === 'reset') { log('↺ System reset'); allRed(); document.getElementById('cv-preview').innerHTML = '<span class="placeholder">No Image</span>'; }
+    if (data.ambulance && (data.event === 'update' || data.event === 'upload_detect' || data.event === 'cv_update')) log('🚨 Ambulance override — SOUTH priority');
+  };
+  ws.onclose = () => {
+    setWS(false); log('⚠️ Disconnected — retrying in 3s…');
+    clearTimeout(reconnectTimer); reconnectTimer = setTimeout(connectWS, 3000);
+  };
+}
+
+async function sendUpdate() {
+  const btn = document.getElementById('btn-go');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  const body = {
+    north: +document.getElementById('sl-n').value, south: +document.getElementById('sl-s').value,
+    east:  +document.getElementById('sl-e').value, west:  +document.getElementById('sl-w').value,
+    ambulance: document.getElementById('amb-chk').checked
+  };
+  try {
+    const r = await fetch(`${API}/api/update`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    if (!r.ok) throw new Error('Server error');
+    log('▶ Manual optimization started');
+  } catch(e) { log('❌ Failed: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = '▶ Optimize (Manual)'; }
+}
+
+async function updateCounts() {
+  const body = {
+    north: +document.getElementById('sl-n').value, south: +document.getElementById('sl-s').value,
+    east:  +document.getElementById('sl-e').value, west:  +document.getElementById('sl-w').value
+  };
+  try {
+    await fetch(`${API}/api/set_counts`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  } catch(e) {}
+}
+
+async function startCV() {
+    // Initialize sliders to default values if all are 0
+    const n = +document.getElementById('sl-n').value;
+    const s = +document.getElementById('sl-s').value;
+    const e = +document.getElementById('sl-e').value;
+    const w = +document.getElementById('sl-w').value;
+    
+    if (n === 0 && s === 0 && e === 0 && w === 0) {
+        // Set default values for N/E/W (South will come from CV)
+        document.getElementById('sl-n').value = 30; document.getElementById('vn').textContent = '30';
+        document.getElementById('sl-e').value = 20; document.getElementById('ve').textContent = '20';
+        document.getElementById('sl-w').value = 70; document.getElementById('vw').textContent = '70';
+        await updateCounts();
+    }
+    
+    try {
+        const r = await fetch(`${API}/api/cv/start`, {method:'POST'});
+        if (!r.ok) throw new Error('Server error');
+        log('▶ Auto CV started. Waiting for vehicle_detection.py output...');
+    } catch(e) { log('❌ Failed: ' + e.message); }
+}
+
+async function uploadImage(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    
+    // Initialize sliders to default values if all are 0
+    const n = +document.getElementById('sl-n').value;
+    const s = +document.getElementById('sl-s').value;
+    const e = +document.getElementById('sl-e').value;
+    const w = +document.getElementById('sl-w').value;
+    
+    if (n === 0 && s === 0 && e === 0 && w === 0) {
+        // Set default values for N/E/W (South will come from upload)
+        document.getElementById('sl-n').value = 30; document.getElementById('vn').textContent = '30';
+        document.getElementById('sl-e').value = 20; document.getElementById('ve').textContent = '20';
+        document.getElementById('sl-w').value = 70; document.getElementById('vw').textContent = '70';
+        await updateCounts();
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    log(`📷 Uploading image for South camera...`);
+    try {
+        const r = await fetch(`${API}/api/detect/upload?direction=south`, {
+            method: 'POST',
+            body: formData
+        });
+        if (!r.ok) throw new Error('Server error');
+        const data = await r.json();
+        log(`✅ YOLO detected ${data.count} vehicles. Ambulance: ${data.ambulance}`);
+        if(data.frame_b64) {
+             document.getElementById('cv-preview').innerHTML = `<img src="data:image/jpeg;base64,${data.frame_b64}" />`;
+        }
+    } catch(e) {
+        log('❌ Upload failed: ' + e.message);
+    }
+    input.value = ''; // Reset
+}
+
+async function sendReset() {
+  try {
+    await fetch(`${API}/api/reset`, {method:'POST'});
+    document.getElementById('amb-chk').checked = false;
+  } catch(e) { log('❌ Reset failed: ' + e.message); }
+}
+
+connectWS();
+</script>
+</body>
+</html>
